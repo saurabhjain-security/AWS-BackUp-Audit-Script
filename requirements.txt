@@ -1,0 +1,102 @@
+# ╔══════════════════════════════════════════════════════════════╗
+# ║   prod_audit.py v3.0 — Production Audit Status Tracker      ║
+# ║   138 controls · 43 AWS services                            ║
+# ║   pip install -r requirements.txt                           ║
+# ╚══════════════════════════════════════════════════════════════╝
+
+# ── AWS SDK ───────────────────────────────────────────────────────────────────
+boto3>=1.34.0          # AWS SDK — all service clients (EC2, RDS, S3, Lambda …)
+botocore>=1.34.0       # Installed automatically with boto3 (exceptions, config)
+
+# ── Terminal UI ───────────────────────────────────────────────────────────────
+rich>=13.7.0           # Coloured tables, panels, progress bar, traceback handler
+
+# ── Excel export ──────────────────────────────────────────────────────────────
+pandas>=2.0.0          # DataFrame construction + ExcelWriter
+openpyxl>=3.1.0        # Excel .xlsx read/write + cell styling engine
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  AWS CREDENTIALS — configure ONE of the following before running
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Option A — AWS CLI profile (recommended for local use)
+#   aws configure
+#   python prod_audit.py
+
+# Option B — Environment variables
+#   export AWS_ACCESS_KEY_ID=AKIAxxxxxxxxxxxxxxxx
+#   export AWS_SECRET_ACCESS_KEY=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+#   export AWS_DEFAULT_REGION=us-east-1
+#   python prod_audit.py
+
+# Option C — IAM Role (EC2 / ECS / Lambda / CloudShell)
+#   Attach an IAM role to the instance — no env vars needed
+#   python prod_audit.py
+
+# Option D — AWS SSO / Identity Center
+#   aws sso login --profile my-profile
+#   AWS_PROFILE=my-profile python prod_audit.py
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  MINIMUM IAM PERMISSIONS REQUIRED
+# ══════════════════════════════════════════════════════════════════════════════
+#
+#  The script is READ-ONLY — it never modifies any resource.
+#  Attach one of these to the IAM user / role running the script:
+#
+#  · SecurityAudit              (AWS managed — broadest read-only, recommended)
+#  · ReadOnlyAccess             (AWS managed — alternative)
+#
+#  Or grant these specific actions (least-privilege):
+#
+#  ec2:Describe*
+#  rds:Describe*
+#  dynamodb:ListTables, DescribeTable, DescribeContinuousBackups, ListBackups
+#  s3:ListAllMyBuckets, GetBucketVersioning, GetBucketPublicAccessBlock,
+#    GetObjectLockConfiguration, GetPublicAccessBlock
+#  kms:ListKeys, DescribeKey, GetKeyRotationStatus, GetKeyPolicy
+#  secretsmanager:ListSecrets
+#  sqs:ListQueues, GetQueueAttributes
+#  lambda:ListFunctions, GetFunctionConfiguration, ListAliases,
+#    GetFunctionEventInvokeConfig
+#  cloudtrail:DescribeTrails, GetTrailStatus
+#  cloudwatch:DescribeAlarms, ListDashboards
+#  logs:DescribeLogGroups
+#  ssm:DescribeParameters, ListAssociations
+#  events:ListRules, ListTargetsByRule, ListEventBuses
+#  scheduler:ListSchedules
+#  guardduty:ListDetectors, GetDetector, ListFindings
+#  iam:ListUsers, ListMFADevices, GetAccountSummary, ListRoles,
+#    ListRolePolicies, GetRolePolicy, GetRole, ListOpenIDConnectProviders
+#  backup:ListBackupVaults, ListBackupJobs, ListBackupPlans, ListProtectedResources
+#  wafv2:ListWebACLs, GetWebACLForResource, GetLoggingConfiguration
+#  sns:ListTopics, GetTopicAttributes, ListSubscriptions
+#  stepfunctions:ListStateMachines, DescribeStateMachine, ListExecutions
+#  elasticache:DescribeCacheClusters
+#  securityhub:DescribeHub, GetEnabledStandards, GetFindings
+#  macie2:GetMacieSession, ListFindings, GetAutomatedDiscoveryConfiguration
+#  athena:ListWorkGroups, GetWorkGroup, ListDataCatalogs
+#  ec2:DescribeTransitGateways, DescribeTransitGatewayRouteTables,
+#    DescribeTransitGatewayAttachments, DescribeFlowLogs
+#  apprunner:ListServices, DescribeService, ListAutoScalingConfigurations
+#  xray:GetSamplingRules
+#  bedrock:ListGuardrails, GetModelInvocationLoggingConfiguration
+#  bedrock-agent:ListKnowledgeBases
+#  route53:ListHostedZones
+#  route53domains:ListDomains
+#  acm:ListCertificates, DescribeCertificate
+#  ecr:DescribeRepositories, GetLifecyclePolicy
+#  elbv2:DescribeLoadBalancers, DescribeLoadBalancerAttributes
+#  cognito-idp:ListUserPools, DescribeUserPool
+#  cloudformation:ListStacks, DescribeStacks
+#  amplify:ListApps
+#  sesv2:ListEmailIdentities, GetEmailIdentity, ListConfigurationSets
+#  dlm:GetLifecyclePolicies
+#  kafka:ListClusters, ListClustersV2
+#  memorydb:DescribeClusters, DescribeSnapshots, DescribeSubnetGroups
+#  eks:ListClusters
+#  ce:ListCostAnomalyMonitors, ListCostAnomalySubscriptions
+#  cloudfront:ListDistributions
+#  config:DescribeConfigurationRecorderStatus
