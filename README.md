@@ -38,6 +38,8 @@ python prod_audit.py --region ca-central-1
 # Use a named AWS CLI profile
 python prod_audit.py --profile my-sso-profile
 ```
+<img width="1914" height="522" alt="image" src="https://github.com/user-attachments/assets/ec614994-42c0-4bbd-898a-c16afe791408" />
+
 
 ---
 
