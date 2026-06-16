@@ -157,6 +157,129 @@ REMEDIATION: Dict[str, str] = {
 }
 
 
+# ── Priority Tier mapping ───────────────────────────────────────────────────────
+# Maps the service name (as used in s.add calls) → Priority Tier label.
+# Services not listed here (Cost Explorer, App Runner, Bedrock) use "—".
+SERVICE_TIER: Dict[str, str] = {
+    # Tier 1 — Direct data-storage services
+    "RDS":              "Tier 1 — Data Destroyed",
+    "DynamoDB":         "Tier 1 — Data Destroyed",
+    "S3":               "Tier 1 — Data Destroyed",
+    "EBS":              "Tier 1 — Data Destroyed",
+    "MemoryDB":         "Tier 1 — Data Destroyed",
+    "ElastiCache":      "Tier 1 — Data Destroyed",
+    "MSK":              "Tier 1 — Data Destroyed",
+    # Tier 2 — Data-pipeline services
+    "SQS":              "Tier 2 — Data Dropped in Transit",
+    "Step Functions":   "Tier 2 — Data Dropped in Transit",
+    "SNS":              "Tier 2 — Data Dropped in Transit",
+    "Lambda":           "Tier 2 — Data Dropped in Transit",
+    "EventBridge":      "Tier 2 — Data Dropped in Transit",
+    "Athena":           "Tier 2 — Data Dropped in Transit",
+    # Tier 3 — Identity & access services
+    "KMS":              "Tier 3 — Data Locked Out",
+    "Secrets Manager":  "Tier 3 — Data Locked Out",
+    "Cognito":          "Tier 3 — Data Locked Out",
+    "IAM":              "Tier 3 — Data Locked Out",
+    "SSM":              "Tier 3 — Data Locked Out",
+    # Tier 4 — Infrastructure routing services
+    "EKS":              "Tier 4 — Data Unreachable",
+    "ECR":              "Tier 4 — Data Unreachable",
+    "CloudFormation":   "Tier 4 — Data Unreachable",
+    "Transit GW":       "Tier 4 — Data Unreachable",
+    "ELB / ALB / NLB":  "Tier 4 — Data Unreachable",
+    "Route 53":         "Tier 4 — Data Unreachable",
+    "API Gateway":      "Tier 4 — Data Unreachable",
+    # Tier 5 — Security & observability services
+    "CloudTrail":       "Tier 5 — Data Exposed or Invisible",
+    "AWS Backup":       "Tier 5 — Data Exposed or Invisible",
+    "GuardDuty":        "Tier 5 — Data Exposed or Invisible",
+    "Security Hub":     "Tier 5 — Data Exposed or Invisible",
+    "Macie":            "Tier 5 — Data Exposed or Invisible",
+    "WAF":              "Tier 5 — Data Exposed or Invisible",
+    "VPC":              "Tier 5 — Data Exposed or Invisible",
+    "CloudWatch":       "Tier 5 — Data Exposed or Invisible",
+    "CloudWatch Logs":  "Tier 5 — Data Exposed or Invisible",
+    "AWS Config":       "Tier 5 — Data Exposed or Invisible",
+    "SES":              "Tier 5 — Data Exposed or Invisible",
+    "Amplify":          "Tier 5 — Data Exposed or Invisible",
+    "CloudFront":       "Tier 5 — Data Exposed or Invisible",
+    "X-Ray":            "Tier 5 — Data Exposed or Invisible",
+    "Bedrock":          "Tier 5 — Data Exposed or Invisible",
+    "Cost Explorer":    "Tier 5 — Data Exposed or Invisible",
+}
+
+# Rich console colours per tier
+TIER_CONSOLE_STYLE: Dict[str, str] = {
+    "Tier 1 — Data Destroyed":            "bold red",
+    "Tier 2 — Data Dropped in Transit":   "bold orange3",
+    "Tier 3 — Data Locked Out":           "bold yellow",
+    "Tier 4 — Data Unreachable":          "bold cyan",
+    "Tier 5 — Data Exposed or Invisible": "bold magenta",
+}
+
+# Excel fill colours per tier (hex, no #)
+TIER_FILL: Dict[str, str] = {
+    "Tier 1": "FFB3B3",  # soft red
+    "Tier 2": "FFD9B3",  # soft orange
+    "Tier 3": "FFFAB3",  # soft yellow
+    "Tier 4": "B3D9FF",  # soft blue
+    "Tier 5": "E8B3FF",  # soft purple
+}
+
+
+def _short_tier(tier: str) -> str:
+    """'Tier 1 — Data Destroyed' → 'Tier 1'  (leaves '—' untouched)."""
+    return tier.split(" —")[0].strip() if " —" in tier else tier
+
+# Full priority-tier reference table embedded from Priority_Tier.xlsx
+PRIORITY_TIER_TABLE: List[tuple] = [
+    ("Tier 1 — Data Destroyed",            "RDS",              "Direct Data Storage",     "Database permanently deleted - all prod data gone with no recovery"),
+    ("Tier 1 — Data Destroyed",            "DynamoDB",         "Direct Data Storage",     "Table deleted - no recycle bin, data gone permanently"),
+    ("Tier 1 — Data Destroyed",            "S3",               "Direct Data Storage",     "Objects deleted or overwritten permanently - backups, assets, state all gone"),
+    ("Tier 1 — Data Destroyed",            "EBS",              "Direct Data Storage",     "Disk wiped on instance termination - app and database data on disk lost"),
+    ("Tier 1 — Data Destroyed",            "MemoryDB",         "Direct Data Storage",     "Cluster failure with no snapshot - persistent cache data lost permanently"),
+    ("Tier 1 — Data Destroyed",            "ElastiCache",      "Direct Data Storage",     "Node failure - session data and cache lost, cold cache hammers database"),
+    ("Tier 1 — Data Destroyed",            "MSK (Kafka)",      "Direct Data Storage",     "Disk full - messages dropped permanently, topic data irrecoverable"),
+    ("Tier 2 — Data Dropped in Transit",   "SQS",              "Data Pipeline",           "Failed messages lost without DLQ - no retry, no visibility, no recovery"),
+    ("Tier 2 — Data Dropped in Transit",   "Step Functions",   "Data Pipeline",           "Failed execution - workflow data lost, downstream systems not updated"),
+    ("Tier 2 — Data Dropped in Transit",   "SNS",              "Data Pipeline",           "Notification events dropped without DLQ - silent loss with no trace"),
+    ("Tier 2 — Data Dropped in Transit",   "Lambda",           "Data Pipeline",           "Async failures discarded without OnFailure destination - events permanently lost"),
+    ("Tier 2 — Data Dropped in Transit",   "EventBridge",      "Data Pipeline",           "Rule deleted - scheduled pipeline stops silently, data processing gap"),
+    ("Tier 2 — Data Dropped in Transit",   "Athena",           "Data Pipeline",           "Workgroup deleted - saved queries, query history, Glue schema definitions gone"),
+    ("Tier 3 — Data Locked Out",           "KMS",              "Identity & Access",       "Key deleted - all data encrypted with it permanently unreadable, no AWS recovery"),
+    ("Tier 3 — Data Locked Out",           "Secrets Manager",  "Identity & Access",       "Credentials deleted - all dependent services break instantly, no recovery"),
+    ("Tier 3 — Data Locked Out",           "Cognito",          "Identity & Access",       "User pool deleted - all user accounts permanently gone, no restore possible"),
+    ("Tier 3 — Data Locked Out",           "IAM",              "Identity & Access",       "Roles deleted - services lose permissions, cannot access their own data"),
+    ("Tier 3 — Data Locked Out",           "SSM",              "Identity & Access",       "SecureString deleted - app config and credentials gone, services fail to start"),
+    ("Tier 4 — Data Unreachable",          "EKS",              "Infrastructure",          "PersistentVolumes lost without Velero - cluster delete takes all pod data with it"),
+    ("Tier 4 — Data Unreachable",          "ECR",              "Infrastructure",          "Rollback image deleted by lifecycle policy - bad deploy becomes irreversible"),
+    ("Tier 4 — Data Unreachable",          "CloudFormation",   "Infrastructure",          "Stack deleted - all resources inside wiped in one command"),
+    ("Tier 4 — Data Unreachable",          "Transit Gateway",  "Infrastructure",          "TGW deleted - all VPC-to-VPC and on-premises connectivity broken instantly"),
+    ("Tier 4 — Data Unreachable",          "ELB / ALB / NLB",  "Infrastructure",          "Load balancer deleted - all traffic routing broken, 100% downtime"),
+    ("Tier 4 — Data Unreachable",          "Route 53",         "Infrastructure",          "Hosted zone deleted - all DNS gone, entire domain offline immediately"),
+    ("Tier 4 — Data Unreachable",          "API Gateway",      "Infrastructure",          "API deleted - all routes, auth, and integrations gone, all endpoints down"),
+    ("Tier 5 — Data Exposed or Invisible", "CloudTrail",       "Security & Observability", "Trail disabled - audit evidence gone, incidents uninvestigable"),
+    ("Tier 5 — Data Exposed or Invisible", "AWS Backup",       "Security & Observability", "Backup plan deleted - relying on service-native backups only, vault unlocked"),
+    ("Tier 5 — Data Exposed or Invisible", "GuardDuty",        "Security & Observability", "Detector disabled - zero threat detection, breaches completely invisible"),
+    ("Tier 5 — Data Exposed or Invisible", "Security Hub",     "Security & Observability", "Disabled - security findings stop aggregating, posture invisible"),
+    ("Tier 5 — Data Exposed or Invisible", "Macie",            "Security & Observability", "Disabled - PII exposure in S3 goes undetected, compliance violation"),
+    ("Tier 5 — Data Exposed or Invisible", "WAF",              "Security & Observability", "Removed - APIs and ALBs exposed to attacks, data at risk of exfiltration"),
+    ("Tier 5 — Data Exposed or Invisible", "VPC",              "Security & Observability", "Misconfigured - sensitive ports open, lateral movement undetected"),
+    ("Tier 5 — Data Exposed or Invisible", "CloudWatch",       "Security & Observability", "Alarms deleted - no alerting on outages or anomalies, blind monitoring"),
+    ("Tier 5 — Data Exposed or Invisible", "CloudWatch Logs",  "Security & Observability", "Log groups deleted - debug impossible, incident investigation blind"),
+    ("Tier 5 — Data Exposed or Invisible", "AWS Config",       "Security & Observability", "Disabled - compliance drift and misconfig completely undetected"),
+    ("Tier 5 — Data Exposed or Invisible", "SES",              "Security & Observability", "Config deleted - transactional email stops, bounce handling gone"),
+    ("Tier 5 — Data Exposed or Invisible", "Amplify",          "Security & Observability", "App config deleted - frontend offline, build pipeline broken"),
+    ("Tier 5 — Data Exposed or Invisible", "CloudFront",       "Security & Observability", "Distribution deleted - CDN offline, static assets and APIs unreachable"),
+    ("Tier 5 — Data Exposed or Invisible", "X-Ray",            "Security & Observability", "Tracing disabled - performance issues and errors untraceable in prod"),
+    ("Tier 5 — Data Exposed or Invisible", "Bedrock",          "Security & Observability", "Logging disabled - LLM usage unauditable, compliance breach"),
+    ("Tier 5 — Data Exposed or Invisible", "Cost Explorer",    "Security & Observability", "Anomaly monitor off - runaway cost from breach or misconfiguration undetected"),
+]
+
+# App Runner has no tier classification in the reference sheet
+SERVICE_TIER["App Runner"] = SERVICE_TIER.get("App Runner", "—")
+
 # ── Data model ─────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -2330,19 +2453,23 @@ def print_results_table(state: AuditState, severity_filter: Optional[str] = None
             header_style="bold bright_blue",
             show_lines=True, expand=True,
         )
-        tbl.add_column("ID",          style="dim white", width=9,  no_wrap=True)
-        tbl.add_column("Control",     min_width=32,                no_wrap=False)
-        tbl.add_column("Severity",    justify="center", width=10,  no_wrap=True)
-        tbl.add_column("Status",      justify="center", width=10,  no_wrap=True)
-        tbl.add_column("Detail",      min_width=28,                no_wrap=False)
-        tbl.add_column("Remediation", min_width=18,                no_wrap=False)
+        tbl.add_column("ID",             style="dim white", width=9,  no_wrap=True)
+        tbl.add_column("Control",        min_width=32,                no_wrap=False)
+        tbl.add_column("Severity",       justify="center", width=10,  no_wrap=True)
+        tbl.add_column("Priority Tier",  min_width=24,                no_wrap=False)
+        tbl.add_column("Status",         justify="center", width=10,  no_wrap=True)
+        tbl.add_column("Detail",         min_width=28,                no_wrap=False)
+        tbl.add_column("Remediation",    min_width=18,                no_wrap=False)
 
         for r in rows:
             icon, st_style = STATUS_STYLE.get(r.status, ("❓", "dim"))
             sev_style       = SEV_STYLE.get(r.severity, "white")
+            tier            = SERVICE_TIER.get(r.service, "—")
+            tier_style      = TIER_CONSOLE_STYLE.get(tier, "dim white")
             tbl.add_row(
                 r.check_id, r.control,
                 f"[{sev_style}]{r.severity}[/]",
+                f"[{tier_style}]{tier}[/]",
                 f"[{st_style}]{icon}[/]",
                 r.detail,
                 f"[dim]{r.remediation[:90]}[/]" if r.remediation else "[dim italic]—[/]",
@@ -2410,11 +2537,11 @@ BORDERS  = Border(top=THIN, bottom=THIN, left=THIN, right=THIN)
 def export_excel(state: AuditState, path: str) -> str:
     rows = [
         {"Sno": i, "ID": r.check_id, "Service": r.service, "Control": r.control,
-         "Severity": r.severity, "Status": r.status, "Detail": r.detail,
-         "Remediation": r.remediation}
+         "Severity": r.severity, "Priority Tier": _short_tier(SERVICE_TIER.get(r.service, "—")),
+         "Status": r.status, "Detail": r.detail, "Remediation": r.remediation}
         for i, r in enumerate(state.results, start=1)
     ]
-    df    = pd.DataFrame(rows, columns=["Sno","ID","Service","Control","Severity","Status","Detail","Remediation"])
+    df    = pd.DataFrame(rows, columns=["Sno","ID","Service","Control","Severity","Priority Tier","Status","Detail","Remediation"])
     total = len(state.results)
     pct   = (state.passes * 100 // total) if total else 0
     account_display = state.account_name if state.account_name else state.account
@@ -2445,22 +2572,25 @@ def export_excel(state: AuditState, path: str) -> str:
     wb = load_workbook(path)
 
     def style_audit_sheet(ws):
-        col_widths = {"A": 6, "B": 12, "C": 22, "D": 48, "E": 10, "F": 10, "G": 65, "H": 55}
+        # A=Sno B=ID C=Service D=Control E=Severity F=Priority Tier G=Status H=Detail I=Remediation
+        col_widths = {"A": 6, "B": 12, "C": 22, "D": 48, "E": 10, "F": 30, "G": 10, "H": 65, "I": 55}
         for col, w in col_widths.items():
             ws.column_dimensions[col].width = w
         for cell in ws[1]:
             cell.fill = HDR_FILL; cell.font = HDR_FONT; cell.border = BORDERS
             cell.alignment = Alignment(horizontal="center", vertical="center")
         for row in ws.iter_rows(min_row=2):
-            sev    = row[4].value or "Low"
-            status = row[5].value or "SKIP"
+            sev    = row[4].value or "Low"    # col E — Severity
+            tier   = row[5].value or "—"       # col F — Priority Tier
+            status = row[6].value or "SKIP"    # col G — Status
             for cell in row:
                 cell.font      = Font(name="Calibri", size=10)
                 cell.border    = BORDERS
                 cell.alignment = Alignment(vertical="center", wrap_text=True)
             row[4].fill = PatternFill("solid", start_color=SEV_FILL.get(sev, "FFFFFF"))
-            row[5].fill = PatternFill("solid", start_color=FILL.get(status, "FFFFFF"))
-            row[5].font = Font(bold=True, name="Calibri", size=10,
+            row[5].fill = PatternFill("solid", start_color=TIER_FILL.get(tier, "FFFFFF"))
+            row[6].fill = PatternFill("solid", start_color=FILL.get(status, "FFFFFF"))
+            row[6].font = Font(bold=True, name="Calibri", size=10,
                                color=FONT_COL.get(status, "000000"))
         ws.freeze_panes = "A2"
         ws.auto_filter.ref = ws.dimensions
@@ -2481,8 +2611,69 @@ def export_excel(state: AuditState, path: str) -> str:
         if sname in wb.sheetnames:
             style_audit_sheet(wb[sname])
 
-    wb.move_sheet("Summary",       offset=-len(wb.sheetnames))
-    wb.move_sheet("Audit Results", offset=-len(wb.sheetnames) + 1)
+    # ── Priority in Tier sheet ─────────────────────────────────────────────────
+    TIER_HDR_FILLS = {
+        "Tier 1 — Data Destroyed":            PatternFill("solid", start_color="C00000"),
+        "Tier 2 — Data Dropped in Transit":   PatternFill("solid", start_color="E36C0A"),
+        "Tier 3 — Data Locked Out":           PatternFill("solid", start_color="C09000"),
+        "Tier 4 — Data Unreachable":          PatternFill("solid", start_color="17375E"),
+        "Tier 5 — Data Exposed or Invisible": PatternFill("solid", start_color="60497A"),
+    }
+    TIER_ROW_FILLS = {
+        "Tier 1": "FFB3B3",
+        "Tier 2": "FFD9B3",
+        "Tier 3": "FFFAB3",
+        "Tier 4": "B3D9FF",
+        "Tier 5": "E8B3FF",
+    }
+    wst = wb.create_sheet("Priority in Tier")
+    tier_headers = ["Priority Tier", "Service", "Risk Category", "What Happens If Control Fails"]
+    for ci, hdr in enumerate(tier_headers, start=1):
+        cell = wst.cell(row=1, column=ci, value=hdr)
+        cell.fill = HDR_FILL; cell.font = HDR_FONT; cell.border = BORDERS
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    wst.column_dimensions["A"].width = 32
+    wst.column_dimensions["B"].width = 20
+    wst.column_dimensions["C"].width = 24
+    wst.column_dimensions["D"].width = 70
+    wst.row_dimensions[1].height = 28
+
+    # Build a flat list of rows to write: insert a coloured section-header row
+    # each time the tier label changes, then write the data row.
+    write_rows: List[tuple] = []    # (is_header, tier, svc, cat, desc)
+    prev_tier = None
+    for entry in PRIORITY_TIER_TABLE:
+        t_tier, t_svc, t_cat, t_desc = entry
+        if t_tier != prev_tier:
+            write_rows.append(("header", t_tier, "", "", ""))
+            prev_tier = t_tier
+        write_rows.append(("data", t_tier, t_svc, t_cat, t_desc))
+
+    for row_idx, (row_type, t_tier, t_svc, t_cat, t_desc) in enumerate(write_rows, start=2):
+        if row_type == "header":
+            hdr_fill = TIER_HDR_FILLS.get(t_tier, HDR_FILL)
+            for ci_h in range(1, 5):
+                hc = wst.cell(row=row_idx, column=ci_h)
+                hc.value = _short_tier(t_tier) if ci_h == 1 else ""
+                hc.fill = hdr_fill
+                hc.font = Font(bold=True, color="FFFFFF", name="Calibri", size=11)
+                hc.border = BORDERS
+                hc.alignment = Alignment(horizontal="left", vertical="center")
+        else:
+            row_fill = PatternFill("solid", start_color=TIER_ROW_FILLS.get(_short_tier(t_tier), "FFFFFF"))
+            for ci_d, val in enumerate([_short_tier(t_tier), t_svc, t_cat, t_desc], start=1):
+                dc = wst.cell(row=row_idx, column=ci_d, value=val)
+                dc.fill = row_fill
+                dc.font = Font(name="Calibri", size=10)
+                dc.border = BORDERS
+                dc.alignment = Alignment(vertical="center", wrap_text=True)
+
+    wst.freeze_panes = "A2"
+    wst.auto_filter.ref = "A1:D1"
+
+    wb.move_sheet("Summary",          offset=-len(wb.sheetnames))
+    wb.move_sheet("Audit Results",    offset=-len(wb.sheetnames) + 1)
+    wb.move_sheet("Priority in Tier", offset=-len(wb.sheetnames) + 2)
     wb.save(path)
     return os.path.abspath(path)
 
